@@ -1,3 +1,4 @@
+from utils.database import save_log
 from agents.crypto_agent import get_crypto_data
 from agents.email_agent import get_email_summary
 from anthropic import Anthropic
@@ -23,22 +24,32 @@ def route_message(user_message: str):
             Give sharp insights, trends, and risks.
             """
 
-            return call_claude(prompt)
+            response = call_claude(prompt)
+            save_log("crypto", response)
+            return response
 
         # 🔹 Email
         elif user_message.startswith("/email"):
-            return get_email_summary()
+            response = get_email_summary()
+            save_log("email", response)
+            return response
 
         # 🔹 Ask
         elif user_message.startswith("/ask"):
             user_query = user_message.replace("/ask", "").strip()
             prompt = f"Act as a high-level business advisor. Give sharp advice: {user_query}"
-            return call_claude(prompt)
+
+            response = call_claude(prompt)
+            save_log("chat", response)
+            return response
 
         # 🔹 Default
         else:
             prompt = f"Respond clearly: {user_message}"
-            return call_claude(prompt)
+
+            response = call_claude(prompt)
+            save_log("chat", response)
+            return response
 
     except Exception as e:
         return f"Error: {str(e)}"

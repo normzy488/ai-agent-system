@@ -1,3 +1,4 @@
+from utils.database import init_db, save_log
 from utils.scheduler import start_scheduler
 from agents.task_router import route_message
 from agents.email_agent import get_email_summary
@@ -26,5 +27,6 @@ app = ApplicationBuilder().token(config.TELEGRAM_BOT_TOKEN).build()
 app.add_handler(MessageHandler(filters.TEXT, handle_message))
 
 print("Bot is running...")
+init_db()
 start_scheduler()
 app.run_polling()

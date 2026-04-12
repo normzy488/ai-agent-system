@@ -63,5 +63,5 @@ def run_scheduler():
 
 
 def start_scheduler():
-    thread = threading.Thread(target=run_scheduler)
+    thread = threading.Thread(target=run_scheduler, daemon=True)
     thread.start()
