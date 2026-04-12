@@ -1,4 +1,4 @@
-from utils.database import save_log
+from utils.database import save_log, get_logs
 from agents.crypto_agent import get_crypto_data
 from agents.email_agent import get_email_summary
 from anthropic import Anthropic
@@ -28,6 +28,19 @@ def route_message(user_message: str):
             save_log("crypto", response)
             return response
 
+        # 🔹 History (NEW)
+        elif user_message.startswith("/history"):
+            logs = get_logs()
+
+            if not logs:
+                return "No history found."
+
+            formatted = "\n\n".join(
+                [f"{t} → {c[:100]}..." for t, c, _ in logs]
+            )
+
+            return f"🧠 Recent Memory:\n\n{formatted}"
+
         # 🔹 Email
         elif user_message.startswith("/email"):
             response = get_email_summary()
@@ -37,7 +50,15 @@ def route_message(user_message: str):
         # 🔹 Ask
         elif user_message.startswith("/ask"):
             user_query = user_message.replace("/ask", "").strip()
-            prompt = f"Act as a high-level business advisor. Give sharp advice: {user_query}"
+
+            prompt = f"""
+            You are a high-level business advisor.
+
+            User question:
+            {user_query}
+
+            Give sharp, practical advice.
+            """
 
             response = call_claude(prompt)
             save_log("chat", response)
