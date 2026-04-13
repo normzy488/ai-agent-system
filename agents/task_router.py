@@ -1,4 +1,4 @@
-from utils.database import save_log, get_logs
+from utils.database import save_log, get_logs, add_task, get_tasks
 from agents.crypto_agent import get_crypto_data
 from agents.email_agent import get_email_summary
 from anthropic import Anthropic
@@ -12,8 +12,27 @@ def route_message(user_message: str):
     user_message = user_message.lower().strip()
 
     try:
+        # 🔹 Add Task
+        if user_message.startswith("/add_task"):
+            task = original_message.replace("/add_task", "").strip()
+            add_task(task)
+            return f"✅ Task added: {task}"
+
+        # 🔹 View Tasks
+        elif user_message.startswith("/view_tasks"):
+            tasks = get_tasks()
+
+            if not tasks:
+                return "No tasks available."
+
+            formatted = "\n".join(
+                [f"{tid}. {t} ({s})" for tid, t, s in tasks]
+            )
+
+            return f"📋 Tasks:\n\n{formatted}"
+
         # 🔹 Crypto
-        if user_message.startswith("/crypto"):
+        elif user_message.startswith("/crypto"):
             data = get_crypto_data()
 
             prompt = f"""
@@ -40,15 +59,9 @@ def route_message(user_message: str):
                 [f"{t} → {c[:100]}..." for t, c, _ in logs]
             )
 
-            return f"🧠 Recent Memory:\n\n{formatted}"
+            return f"🧠 Memory:\n\n{formatted}"
 
-        # 🔹 Email
-        elif user_message.startswith("/email"):
-            response = get_email_summary()
-            save_log("email", response)
-            return response
-
-        # 🔹 Everything else (memory-aware)
+        # 🔹 Default (memory aware)
         else:
             response = call_claude(original_message)
             save_log("chat", response)
@@ -61,32 +74,20 @@ def route_message(user_message: str):
 def call_claude(user_input):
     logs = get_logs(3)
 
-    if logs:
-        last_type, last_content, _ = logs[0]
-
-        memory_section = f"""
-        LAST MEMORY ({last_type}):
-        {last_content}
-        """
-    else:
-        memory_section = "No past memory."
+    memory_context = "\n".join(
+        [f"{t}: {c}" for t, c, _ in logs]
+    )
 
     full_prompt = f"""
-    You are an intelligent AI agent with memory.
+    You are an AI operator.
 
-    RULES:
-    - You DO have access to past memory below
-    - If the user refers to "last", "previous", "earlier" → use LAST MEMORY
-    - NEVER say you don’t have access to previous context
+    Memory:
+    {memory_context}
 
-    ===== MEMORY =====
-    {memory_section}
-    ==================
-
-    USER MESSAGE:
+    Task:
     {user_input}
 
-    Respond clearly and use memory when relevant.
+    Give clear, actionable response.
     """
 
     response = client.messages.create(
