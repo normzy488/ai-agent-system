@@ -28,7 +28,7 @@ def route_message(user_message: str):
             save_log("crypto", response)
             return response
 
-        # 🔹 History (NEW)
+        # 🔹 History
         elif user_message.startswith("/history"):
             logs = get_logs()
 
@@ -77,10 +77,26 @@ def route_message(user_message: str):
 
 
 def call_claude(prompt):
+    logs = get_logs(5)
+
+    memory_context = "\n".join(
+        [f"{t}: {c}" for t, c, _ in logs]
+    )
+
+    full_prompt = f"""
+    You are an intelligent AI agent with memory.
+
+    Past context:
+    {memory_context}
+
+    Current task:
+    {prompt}
+    """
+
     response = client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=300,
-        messages=[{"role": "user", "content": prompt}]
+        messages=[{"role": "user", "content": full_prompt}]
     )
 
     return response.content[0].text
