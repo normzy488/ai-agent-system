@@ -86,3 +86,16 @@ def get_tasks():
     conn.close()
 
     return rows
+
+
+def complete_task(task_id):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "UPDATE tasks SET status = 'completed' WHERE id = ?",
+        (task_id,)
+    )
+
+    conn.commit()
+    conn.close()

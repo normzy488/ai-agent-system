@@ -2,7 +2,7 @@ import schedule
 import time
 import threading
 from agents.task_router import call_claude
-from utils.database import get_tasks, save_log
+from utils.database import get_tasks, save_log, complete_task
 import requests
 import config
 
@@ -18,7 +18,7 @@ def send_telegram_message(text):
     requests.post(url, data=payload)
 
 
-# 🔥 EXECUTE TASKS
+# 🔥 EXECUTE TASKS (RUN ONCE)
 def run_task_executor():
     print("Running task executor...")
 
@@ -42,8 +42,10 @@ def run_task_executor():
 
             save_log("task", f"{task} → {result}")
 
+            # 🔥 MARK AS COMPLETED
+            complete_task(task_id)
 
-# 🔹 Existing Reports
+
 def auto_crypto_report():
     print("Running crypto report...")
 
