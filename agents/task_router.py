@@ -8,6 +8,7 @@ client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
 
 
 def route_message(user_message: str):
+    original_message = user_message.strip()
     user_message = user_message.lower().strip()
 
     try:
@@ -47,28 +48,9 @@ def route_message(user_message: str):
             save_log("email", response)
             return response
 
-        # 🔹 Ask
-        elif user_message.startswith("/ask"):
-            user_query = user_message.replace("/ask", "").strip()
-
-            prompt = f"""
-            You are a high-level business advisor.
-
-            User question:
-            {user_query}
-
-            Give sharp, practical advice.
-            """
-
-            response = call_claude(prompt)
-            save_log("chat", response)
-            return response
-
-        # 🔹 Default
+        # 🔹 Everything else (memory-aware)
         else:
-            prompt = f"Respond clearly: {user_message}"
-
-            response = call_claude(prompt)
+            response = call_claude(original_message)
             save_log("chat", response)
             return response
 
@@ -76,21 +58,35 @@ def route_message(user_message: str):
         return f"Error: {str(e)}"
 
 
-def call_claude(prompt):
-    logs = get_logs(5)
+def call_claude(user_input):
+    logs = get_logs(3)
 
-    memory_context = "\n".join(
-        [f"{t}: {c}" for t, c, _ in logs]
-    )
+    if logs:
+        last_type, last_content, _ = logs[0]
+
+        memory_section = f"""
+        LAST MEMORY ({last_type}):
+        {last_content}
+        """
+    else:
+        memory_section = "No past memory."
 
     full_prompt = f"""
     You are an intelligent AI agent with memory.
 
-    Past context:
-    {memory_context}
+    RULES:
+    - You DO have access to past memory below
+    - If the user refers to "last", "previous", "earlier" → use LAST MEMORY
+    - NEVER say you don’t have access to previous context
 
-    Current task:
-    {prompt}
+    ===== MEMORY =====
+    {memory_section}
+    ==================
+
+    USER MESSAGE:
+    {user_input}
+
+    Respond clearly and use memory when relevant.
     """
 
     response = client.messages.create(
