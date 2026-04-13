@@ -1,9 +1,8 @@
 import schedule
 import time
 import threading
-from agents.email_agent import get_email_summary
-from agents.crypto_agent import get_crypto_data
 from agents.task_router import call_claude
+from utils.database import get_tasks, save_log
 import requests
 import config
 
@@ -19,32 +18,39 @@ def send_telegram_message(text):
     requests.post(url, data=payload)
 
 
-def auto_email_report():
-    print("Running email report...")
+# 🔥 EXECUTE TASKS
+def run_task_executor():
+    print("Running task executor...")
 
-    try:
-        summary = get_email_summary()
-        send_telegram_message(f"📬 EMAIL REPORT\n\n{summary}")
-    except Exception as e:
-        print("Email error:", e)
+    tasks = get_tasks()
+
+    for task_id, task, status in tasks:
+        if status == "pending":
+
+            prompt = f"""
+            You are an AI operations assistant.
+
+            Task:
+            {task}
+
+            Execute this task intelligently and give a result or recommendation.
+            """
+
+            result = call_claude(prompt)
+
+            send_telegram_message(f"✅ TASK EXECUTED:\n\n{task}\n\n{result}")
+
+            save_log("task", f"{task} → {result}")
 
 
+# 🔹 Existing Reports
 def auto_crypto_report():
     print("Running crypto report...")
 
     try:
-        data = get_crypto_data()
-
-        prompt = f"""
-        You are a crypto analyst.
-
-        Here is the latest crypto data:
-        {data}
-
-        Give key insights, risks, and opportunities.
-        """
-
+        prompt = "Give latest important crypto insights and risks."
         analysis = call_claude(prompt)
+
         send_telegram_message(f"📊 CRYPTO REPORT\n\n{analysis}")
 
     except Exception as e:
@@ -52,7 +58,7 @@ def auto_crypto_report():
 
 
 def run_scheduler():
-    schedule.every(12).hours.do(auto_email_report)
+    schedule.every(2).minutes.do(run_task_executor)
     schedule.every(4).hours.do(auto_crypto_report)
 
     print("Scheduler started...")
